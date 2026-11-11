@@ -1,0 +1,44 @@
+[package]
+name = "gallery-3d-viewer"
+version = "0.2.2"
+edition = "2024"
+authors = ["Gallery Inc."]
+description = "Native Rust + Slint 3D model viewer, converter and print estimator"
+license = "MIT"
+build = "build.rs"
+
+[features]
+default = ["cad-occt"]
+cad-occt = ["dep:cadrum"]
+
+[dependencies]
+slint = { version = "~1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-femtovg-wgpu", "unstable-wgpu-30", "compat-1-18"] }
+glam = "0.33.8"
+bytemuck = { version = "1.25.2", features = ["derive"] }
+rfd = "0.17.2"
+image = { version = "0.25.8", default-features = false, features = ["png", "jpeg", "webp", "bmp", "tga", "tiff", "dds"] }
+gltf = { version = "1.4.1", features = ["import", "names", "utils"] }
+quick-xml = "0.38.3"
+zip = { version = "5.1.1", default-features = false, features = ["deflate"] }
+serde_json = "1.0.145"
+roxmltree = "0.20.0"
+# Statically linked headless OpenCASCADE backend for STEP/BRep CAD import.
+cadrum = { version = "=0.8.20", default-features = false, optional = true }
+
+# Pure-Rust FBX decoder; linked into the single executable.
+oxideav-fbx = { version = "0.0.3", default-features = false }
+oxideav-mesh3d = { version = "0.0.6", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56.0"
+
+[build-dependencies]
+slint-build = "~1.18.1"
+winresource = "0.1.31"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "unwind"
+strip = "symbols"

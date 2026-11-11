@@ -1,0 +1,541 @@
+import { Button, CheckBox, Slider, ScrollView } from "std-widgets.slint";
+
+export struct MeshItem {
+    name: string,
+    visible: bool,
+    selected: bool,
+    triangles: string,
+    material: string,
+}
+
+export component MainWindow inherits Window {
+    title: "3D Viewer 0.2.2";
+    preferred-width: 1440px;
+    preferred-height: 900px;
+    min-width: 1200px;
+    min-height: 640px;
+
+    in-out property <image> viewport-image;
+    in-out property <string> current-file: "Demo cube";
+    in-out property <string> model-name: "Demo cube";
+    in-out property <[MeshItem]> mesh-items;
+    in-out property <int> selected-mesh-index: 0;
+    in-out property <string> selected-name-text: "Demo cube";
+    in-out property <string> vertices-text: "8";
+    in-out property <string> triangles-text: "12";
+    in-out property <string> total-triangles-text: "12";
+    in-out property <string> dimensions-text: "1.000 × 1.000 × 1.000";
+    in-out property <string> scene-dimensions-text: "1.000 × 1.000 × 1.000";
+    in-out property <string> area-text: "6.000";
+    in-out property <string> volume-text: "1.000";
+    in-out property <string> mesh-count-text: "1";
+    in-out property <string> visible-count-text: "1";
+    in-out property <string> materials-text: "Default";
+    in-out property <string> status-text: "Ready";
+    in-out property <string> renderer-text: "DirectX 12";
+    in-out property <string> gpu-text: "Detecting GPU…";
+    in-out property <string> texture-status-text: "No local textures detected";
+    in-out property <string> texture-assets-text: "0";
+    in-out property <string> texture-path-text: "—";
+    in-out property <string> import-backend-text: "Built-in mesh importer";
+    in-out property <bool> settings-visible: false;
+    in-out property <bool> print-visible: false;
+    in-out property <bool> shortcuts-visible: false;
+    in-out property <bool> wireframe: false;
+    in-out property <bool> show-edges: true;
+    in-out property <bool> use-textures: true;
+    in-out property <bool> mode-2d: false;
+    in-out property <float> zoom-percent: 100.0;
+    in-out property <string> view-mode-text: "3D Perspective";
+    in-out property <int> theme-mode: 2;
+    in-out property <float> filament-price: 60.0;
+    in-out property <float> filament-density: 1.24;
+    in-out property <float> infill-percent: 20.0;
+    in-out property <float> cad-linear-deflection: 0.10;
+    in-out property <float> cad-angular-deflection: 20.0;
+    in-out property <bool> cad-relative-deflection: false;
+    in-out property <string> print-weight-text: "0.25 g";
+    in-out property <string> print-cost-text: "0.02 lei";
+
+    out property <float> viewport-width-px: viewport.width / 1px;
+    out property <float> viewport-height-px: viewport.height / 1px;
+
+    callback open-file();
+    callback export-file();
+    callback fit-view();
+    callback fit-selected();
+    callback rotate-left();
+    callback rotate-right();
+    callback rotate-up();
+    callback rotate-down();
+    callback zoom-in();
+    callback zoom-out();
+    callback front-view();
+    callback back-view();
+    callback left-view();
+    callback right-view();
+    callback top-view();
+    callback bottom-view();
+    callback iso-view();
+    callback toggle-wireframe(bool);
+    callback toggle-show-edges(bool);
+    callback toggle-use-textures(bool);
+    callback toggle-2d(bool);
+    callback set-zoom-percent(float);
+    callback select-mesh(int);
+    callback select-previous-mesh();
+    callback select-next-mesh();
+    callback toggle-mesh-visible(int);
+    callback isolate-mesh(int);
+    callback show-all-meshes();
+    callback pick-mesh(float, float, float, float);
+    callback orbit-view(float, float);
+    callback pan-view(float, float);
+    callback wheel-zoom(float);
+    callback open-default-apps();
+    callback save-settings();
+    callback recalc-print();
+
+    background: theme-mode == 3 ? #000000 : theme-mode == 1 ? #f5f7fb : #11151c;
+    default-font-size: 14px;
+    forward-focus: shortcut-scope;
+
+    shortcut-scope := FocusScope {
+        width: root.width;
+        height: root.height;
+
+        VerticalLayout {
+        spacing: 0px;
+
+        Rectangle {
+            height: 70px;
+            background: root.theme-mode == 3 ? #070707 : root.theme-mode == 1 ? #ffffff : #171c25;
+            HorizontalLayout {
+                spacing: 0px;
+
+                Rectangle {
+                    width: 300px;
+                    background: root.theme-mode == 3 ? #050505 : root.theme-mode == 1 ? #fbfcfe : #141922;
+                    HorizontalLayout {
+                        padding-left: 22px; padding-right: 18px; spacing: 12px; alignment: center;
+                        Text { text: "◆"; font-size: 28px; font-weight: 700; color: root.theme-mode == 1 ? #172033 : #f5f7fb; }
+                        Text { text: "3D Viewer"; font-size: 21px; font-weight: 700; color: root.theme-mode == 1 ? #172033 : #f5f7fb; }
+                    }
+                }
+
+                Rectangle { width: 1px; background: root.theme-mode == 1 ? #e2e7ee : #252d39; }
+
+                HorizontalLayout {
+                    padding-left: 16px; padding-right: 18px; spacing: 8px; alignment: center;
+                    Rectangle { horizontal-stretch: 1; }
+                    Button { text: "Open"; icon: @image-url("../assets/icons/open.svg"); icon-size: 17px; colorize-icon: true; clicked => { root.open-file(); } }
+                    Button { text: "Export"; icon: @image-url("../assets/icons/export.svg"); icon-size: 17px; colorize-icon: true; clicked => { root.export-file(); } }
+                    Button { text: "3D Print"; icon: @image-url("../assets/icons/printer.svg"); icon-size: 17px; colorize-icon: true; clicked => { root.print-visible = true; root.recalc-print(); } }
+                    Button { text: "Shortcuts"; icon: @image-url("../assets/icons/keyboard.svg"); icon-size: 17px; colorize-icon: true; clicked => { root.shortcuts-visible = true; } }
+                    Button { text: "Settings"; icon: @image-url("../assets/icons/settings.svg"); icon-size: 17px; colorize-icon: true; clicked => { root.settings-visible = true; } }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 0px;
+
+            Rectangle {
+                width: 300px;
+                background: root.theme-mode == 3 ? #050505 : root.theme-mode == 1 ? #f8f9fc : #141922;
+                VerticalLayout {
+                    padding-left: 14px; padding-right: 14px; padding-top: 18px; padding-bottom: 12px; spacing: 12px;
+
+                    Rectangle {
+                        height: 34px;
+                        HorizontalLayout {
+                            spacing: 10px; alignment: center;
+                            Text { text: "MESHES"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                            Rectangle { horizontal-stretch: 1; }
+                            Text { text: root.visible-count-text + " / " + root.mesh-count-text; color: #7a8ba1; font-size: 11px; }
+                            Button { width: 36px; height: 32px; icon: @image-url("../assets/icons/layers.svg"); icon-size: 15px; colorize-icon: true; clicked => { root.show-all-meshes(); } }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 84px; border-radius: 8px; background: root.theme-mode == 1 ? #eef2f8 : #1c2430;
+                        HorizontalLayout {
+                            padding-left: 12px; padding-right: 12px; spacing: 11px; alignment: center;
+                            Rectangle {
+                                width: 22px;
+                                VerticalLayout {
+                                    alignment: center;
+                                    Image { source: @image-url("../assets/icons/cube.svg"); width: 18px; height: 18px; colorize: #7fb4f4; }
+                                }
+                            }
+                            VerticalLayout {
+                                horizontal-stretch: 1; spacing: 4px; alignment: center;
+                                Text { text: root.current-file; color: root.theme-mode == 1 ? #1a2434 : #f2f5fa; font-weight: 700; font-size: 14px; overflow: elide; }
+                                Text { text: root.mesh-count-text + " mesh • " + root.total-triangles-text + " tri"; color: #8090a7; font-size: 10px; overflow: elide; }
+                                Text { text: root.scene-dimensions-text + " mm"; color: #65758c; font-size: 10px; overflow: elide; }
+                            }
+                        }
+                    }
+
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 7px;
+                            for row[i] in root.mesh-items: Rectangle {
+                                height: 60px;
+                                border-radius: 7px;
+                                background: row.selected ? (root.theme-mode == 1 ? #dce9f8 : #26384d) : (root.theme-mode == 1 ? #f4f6fa : #181e27);
+                                HorizontalLayout {
+                                    padding-left: 10px; padding-right: 8px; spacing: 7px; alignment: center;
+
+                                    Rectangle {
+                                        width: 20px;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            Image { source: @image-url("../assets/icons/cube.svg"); width: 16px; height: 16px; colorize: row.selected ? #7fb4f4 : #7d91ad; }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        horizontal-stretch: 1;
+                                        TouchArea { clicked => { root.select-mesh(i); } }
+                                        VerticalLayout {
+                                            padding-left: 2px; padding-right: 3px; spacing: 4px; alignment: center;
+                                            Text { text: row.name; color: root.theme-mode == 1 ? #1b293a : #edf3fa; font-weight: row.selected ? 700 : 500; font-size: 13px; overflow: elide; }
+                                            Text { text: row.triangles + " tri • " + row.material; color: #718298; font-size: 10px; overflow: elide; }
+                                        }
+                                    }
+
+                                    Button {
+                                        width: 32px; height: 32px;
+                                        icon: row.visible ? @image-url("../assets/icons/eye.svg") : @image-url("../assets/icons/eye-off.svg");
+                                        icon-size: 14px; colorize-icon: true;
+                                        clicked => { root.toggle-mesh-visible(i); }
+                                    }
+                                    Button {
+                                        width: 32px; height: 32px;
+                                        icon: @image-url("../assets/icons/focus.svg"); icon-size: 14px; colorize-icon: true;
+                                        clicked => { root.isolate-mesh(i); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { height: 1px; background: root.theme-mode == 1 ? #e1e6ee : #252e3b; }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text { text: "v0.2.2 • CAD / BIM"; color: #65758c; font-size: 11px; }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+                    Text { text: root.renderer-text; color: #6f88a6; font-size: 11px; overflow: elide; }
+                }
+            }
+
+            VerticalLayout {
+                spacing: 0px;
+                Rectangle {
+                    height: 50px;
+                    background: root.theme-mode == 3 ? #080808 : root.theme-mode == 1 ? #f2f5f9 : #181f29;
+                    HorizontalLayout {
+                        padding-left: 10px; padding-right: 10px; spacing: 5px; alignment: center;
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/fit.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.fit-view(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/box-select.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.fit-selected(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/cube.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.iso-view(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/front.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.front-view(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/top.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.top-view(); } }
+                        Rectangle { width: 1px; height: 24px; background: root.theme-mode == 1 ? #d7dde6 : #2a3442; }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/rotate-ccw.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.rotate-left(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/rotate-cw.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.rotate-right(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/arrow-up.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.rotate-up(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/arrow-down.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.rotate-down(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/zoom-in.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.zoom-in(); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/zoom-out.svg"); icon-size: 18px; colorize-icon: true; clicked => { root.zoom-out(); } }
+                        Rectangle { width: 1px; height: 24px; background: root.theme-mode == 1 ? #d7dde6 : #2a3442; }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/wireframe.svg"); icon-size: 18px; colorize-icon: true; checkable: true; checked <=> root.wireframe; clicked => { root.toggle-wireframe(root.wireframe); } }
+                        Button { width: 40px; height: 36px; icon: @image-url("../assets/icons/edges.svg"); icon-size: 18px; colorize-icon: true; checkable: true; checked <=> root.show-edges; clicked => { root.toggle-show-edges(root.show-edges); } }
+                        Rectangle { width: 1px; height: 24px; background: root.theme-mode == 1 ? #d7dde6 : #2a3442; }
+                        Button { width: 48px; height: 36px; text: "2D"; checkable: true; checked <=> root.mode-2d; clicked => { root.toggle-2d(root.mode-2d); } }
+                        Rectangle { horizontal-stretch: 1; }
+                        Text { text: root.view-mode-text; color: #718197; font-size: 11px; }
+                    }
+                }
+
+                viewport := Rectangle {
+                    background: #090c12;
+                    Image { source: root.viewport-image; width: parent.width; height: parent.height; image-fit: contain; }
+                    viewport-focus := FocusScope {
+                        width: parent.width; height: parent.height;
+                        TouchArea {
+                            property <int> drag-mode: 0;
+                            property <length> last-x: 0px;
+                            property <length> last-y: 0px;
+                            pointer-event(event) => {
+                                if (event.kind == PointerEventKind.down) {
+                                    self.last-x = self.mouse-x; self.last-y = self.mouse-y;
+                                    if (event.button == PointerEventButton.middle || (event.button == PointerEventButton.left && event.modifiers.shift)) { self.drag-mode = 2; }
+                                    else if (event.button == PointerEventButton.left) { self.drag-mode = 1; }
+                                    else { self.drag-mode = 0; }
+                                } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) { self.drag-mode = 0; }
+                            }
+                            moved => {
+                                if (self.pressed) {
+                                    if (self.drag-mode == 1) { root.orbit-view((self.mouse-x - self.last-x) / 1px, (self.mouse-y - self.last-y) / 1px); }
+                                    else if (self.drag-mode == 2) { root.pan-view((self.mouse-x - self.last-x) / 1px, (self.mouse-y - self.last-y) / 1px); }
+                                    self.last-x = self.mouse-x; self.last-y = self.mouse-y;
+                                }
+                            }
+                            clicked => { root.pick-mesh(self.mouse-x / 1px, self.mouse-y / 1px, viewport.width / 1px, viewport.height / 1px); }
+                            double-clicked => { root.pick-mesh(self.mouse-x / 1px, self.mouse-y / 1px, viewport.width / 1px, viewport.height / 1px); root.fit-selected(); }
+                            scroll-event(event) => { root.wheel-zoom(event.delta-y / 1px); accept }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: 40px;
+                    background: root.theme-mode == 3 ? #050505 : root.theme-mode == 1 ? #f4f6f9 : #131922;
+                    HorizontalLayout {
+                        padding-left: 12px; padding-right: 10px; spacing: 8px; alignment: center;
+                        Text { horizontal-stretch: 1; text: root.status-text; color: #7fa8dc; font-size: 11px; overflow: elide; }
+                        Text { text: root.visible-count-text + "/" + root.mesh-count-text + " • " + root.total-triangles-text + " tri"; color: #78879b; font-size: 11px; }
+                        Rectangle { width: 1px; height: 22px; background: root.theme-mode == 1 ? #d8dee7 : #2a3442; }
+                        Text { text: root.view-mode-text; color: #74869e; font-size: 11px; }
+                        Button { width: 28px; height: 28px; text: "−"; clicked => { root.zoom-out(); } }
+                        Text { width: 48px; horizontal-alignment: center; text: Math.round(root.zoom-percent) + "%"; color: root.theme-mode == 1 ? #26364a : #dce6f2; font-size: 11px; }
+                        Slider { width: 112px; minimum: 10; maximum: 800; value: root.zoom-percent; changed(value) => { root.set-zoom-percent(value); } }
+                        Button { width: 28px; height: 28px; text: "+"; clicked => { root.zoom-in(); } }
+                        Button { width: 42px; height: 28px; text: "Fit"; clicked => { root.fit-view(); } }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: 310px;
+                background: root.theme-mode == 3 ? #050505 : root.theme-mode == 1 ? #f8f9fc : #141922;
+                ScrollView {
+                    VerticalLayout {
+                        padding-left: 16px; padding-right: 16px; padding-top: 14px; padding-bottom: 16px; spacing: 10px;
+
+                        Text { text: "MODEL DISPLAY"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                        CheckBox { text: "Show edges"; checked <=> root.show-edges; toggled => { root.toggle-show-edges(root.show-edges); } }
+                        CheckBox { text: "Wireframe"; checked <=> root.wireframe; toggled => { root.toggle-wireframe(root.wireframe); } }
+                        CheckBox { text: "Use textures"; checked <=> root.use-textures; toggled => { root.toggle-use-textures(root.use-textures); } }
+                        HorizontalLayout {
+                            spacing: 6px;
+                            Button { horizontal-stretch: 1; text: "Isolate selected"; clicked => { root.isolate-mesh(root.selected-mesh-index); } }
+                            Button { horizontal-stretch: 1; text: "Show all"; clicked => { root.show-all-meshes(); } }
+                        }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #252e3b; }
+                        Text { text: "SELECTED MESH"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                        Text { text: root.selected-name-text; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 16px; font-weight: 700; overflow: elide; }
+
+                        HorizontalLayout { Text { text: "Dimensions"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.dimensions-text + " mm"; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 11px; font-weight: 600; } }
+                        HorizontalLayout { Text { text: "Vertices"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.vertices-text; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 11px; } }
+                        HorizontalLayout { Text { text: "Triangles"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.triangles-text; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 11px; } }
+                        HorizontalLayout { Text { text: "Surface area"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.area-text; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 11px; } }
+                        HorizontalLayout { Text { text: "Mesh volume"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.volume-text; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 11px; } }
+                        HorizontalLayout { Text { text: "Material"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.materials-text; color: root.theme-mode == 1 ? #1d2a3b : #eef3f8; font-size: 11px; overflow: elide; } }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #252e3b; }
+                        Text { text: "MATERIAL / TEXTURES"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                        Text { text: root.texture-status-text; wrap: word-wrap; color: root.theme-mode == 1 ? #24364c : #dce7f3; font-size: 11px; }
+                        HorizontalLayout { Text { text: "Texture assets"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.texture-assets-text; color: #8291a5; font-size: 11px; } }
+                        Text { text: root.texture-path-text; wrap: word-wrap; color: #6f8096; font-size: 10px; }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #252e3b; }
+                        Text { text: "SCENE"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                        HorizontalLayout { Text { text: "Objects"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.mesh-count-text + " • " + root.visible-count-text + " visible"; color: #8392a6; font-size: 11px; } }
+                        HorizontalLayout { Text { text: "Dimensions"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.scene-dimensions-text + " mm"; color: #8392a6; font-size: 11px; } }
+                        HorizontalLayout { Text { text: "Triangles"; color: #7b8ba0; font-size: 11px; } Rectangle { horizontal-stretch: 1; } Text { text: root.total-triangles-text; color: #8392a6; font-size: 11px; } }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #252e3b; }
+                        Text { text: "FORMAT SUPPORT"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                        Text { text: "Import"; color: root.theme-mode == 1 ? #24364c : #dce7f3; font-size: 11px; font-weight: 600; }
+                        Text { text: "OBJ • STL • OFF • PLY • glTF/GLB • 3MF • AMF • BIM • DAE • 3DS • FBX • WRL/VRML • STEP/STP • BREP/BRP • FCStd • IFC"; wrap: word-wrap; color: #8392a6; font-size: 10px; }
+                        Text { text: "Backend: " + root.import-backend-text; wrap: word-wrap; color: #7fb4f4; font-size: 10px; }
+                        Text { text: "IGES/IGS and Rhino 3DM are recognized but require their full geometry backends."; wrap: word-wrap; color: #65758c; font-size: 10px; }
+                        Text { text: "Export"; color: root.theme-mode == 1 ? #24364c : #dce7f3; font-size: 11px; font-weight: 600; }
+                        Text { text: "OBJ/MTL • STL • OFF • PLY • glTF/GLB • BIM"; wrap: word-wrap; color: #8392a6; font-size: 10px; }
+                    }
+                }
+            }
+        }
+    }
+
+    if root.settings-visible: Rectangle {
+        x: 0; y: 0; width: root.width; height: root.height; background: #00000088;
+        Rectangle {
+            width: 620px; height: parent.height < 740px ? parent.height - 36px : 700px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            border-radius: 12px; background: root.theme-mode == 3 ? #090909 : root.theme-mode == 1 ? #ffffff : #1b222d;
+            VerticalLayout {
+                padding: 20px; spacing: 12px;
+                HorizontalLayout {
+                    Text { text: "Settings"; font-size: 22px; font-weight: 700; color: root.theme-mode == 1 ? #162033 : #f5f7fb; }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button { text: "Close"; clicked => { root.settings-visible = false; } }
+                }
+                ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        padding-right: 8px; spacing: 12px;
+                        Text { text: "Appearance"; color: #8090a7; font-weight: 600; }
+                        HorizontalLayout { spacing: 6px; Button { text: "Light"; clicked => { root.theme-mode = 1; } } Button { text: "Dark"; clicked => { root.theme-mode = 2; } } Button { text: "AMOLED"; clicked => { root.theme-mode = 3; } } }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+                        Text { text: "CAD / BIM tessellation"; color: #8090a7; font-weight: 600; }
+                        Text { text: "Used when STEP, BREP and FCStd exact CAD geometry is converted to viewport triangles."; wrap: word-wrap; color: root.theme-mode == 1 ? #33465e : #b5c1d0; font-size: 12px; }
+                        Text { text: "Linear deflection: " + Math.round(root.cad-linear-deflection * 1000) / 1000 + " mm"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                        Slider { minimum: 0.01; maximum: 2.0; value <=> root.cad-linear-deflection; }
+                        Text { text: "Angular deflection: " + Math.round(root.cad-angular-deflection) + "°"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                        Slider { minimum: 1; maximum: 45; value <=> root.cad-angular-deflection; }
+                        CheckBox { text: "Relative linear deflection"; checked <=> root.cad-relative-deflection; }
+                        Text { text: "Smaller deflection creates a denser mesh. The CAD source remains exact; only viewport tessellation changes."; wrap: word-wrap; color: #78889d; font-size: 11px; }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+                        Text { text: "3D printing"; color: #8090a7; font-weight: 600; }
+                        Text { text: "Filament price (lei/kg): " + Math.round(root.filament-price); color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                        Slider { minimum: 1; maximum: 500; value <=> root.filament-price; }
+                        Text { text: "Filament density (g/cm³): " + Math.round(root.filament-density * 100) / 100; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                        Slider { minimum: 0.7; maximum: 1.6; value <=> root.filament-density; }
+                        Text { text: "Default infill: " + Math.round(root.infill-percent) + "%"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                        Slider { minimum: 0; maximum: 100; value <=> root.infill-percent; }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+                        Text { text: "Keyboard controls"; color: #8090a7; font-weight: 600; }
+                        Text { text: "Application-wide shortcuts are enabled. Press F1 at any time to see the full control map."; wrap: word-wrap; color: root.theme-mode == 1 ? #33465e : #b5c1d0; font-size: 12px; }
+                        Button { text: "Show keyboard shortcuts"; icon: @image-url("../assets/icons/keyboard.svg"); icon-size: 16px; colorize-icon: true; clicked => { root.settings-visible = false; root.shortcuts-visible = true; } }
+
+                        Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+                        Text { text: "File associations"; color: #8090a7; font-weight: 600; }
+                        Text { text: "The app registers Windows capabilities for the target 3D/CAD formats so it appears in Settings > Apps > Default apps."; wrap: word-wrap; color: root.theme-mode == 1 ? #33465e : #b5c1d0; font-size: 12px; }
+                        Button { text: "Open Windows Default Apps"; clicked => { root.open-default-apps(); } }
+                    }
+                }
+                Button { text: "Save settings"; clicked => { root.save-settings(); root.settings-visible = false; } }
+            }
+        }
+    }
+
+    if root.print-visible: Rectangle {
+        x: 0; y: 0; width: root.width; height: root.height; background: #00000088;
+        Rectangle {
+            width: 520px; height: 500px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; border-radius: 12px;
+            background: root.theme-mode == 3 ? #090909 : root.theme-mode == 1 ? #ffffff : #1b222d;
+            VerticalLayout {
+                padding: 24px; spacing: 14px;
+                HorizontalLayout { Text { text: "3D Print"; font-size: 22px; font-weight: 700; color: root.theme-mode == 1 ? #162033 : #f5f7fb; } Rectangle { horizontal-stretch: 1; } Button { text: "Close"; clicked => { root.print-visible = false; } } }
+                Text { text: "Pre-slice estimate for visible objects"; color: #8090a7; }
+                Text { text: "Infill: " + Math.round(root.infill-percent) + "%"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                Slider { minimum: 0; maximum: 100; value <=> root.infill-percent; changed(value) => { root.recalc-print(); } }
+                Rectangle {
+                    height: 110px; border-radius: 9px; background: root.theme-mode == 1 ? #eef2f7 : #111720;
+                    VerticalLayout { padding: 14px; spacing: 8px;
+                        HorizontalLayout { Text { text: "Estimated filament"; color: #8291a4; } Rectangle { horizontal-stretch: 1; } Text { text: root.print-weight-text; color: root.theme-mode == 1 ? #1b2c42 : #f0f5fa; font-size: 20px; font-weight: 700; } }
+                        HorizontalLayout { Text { text: "Estimated material cost"; color: #8291a4; } Rectangle { horizontal-stretch: 1; } Text { text: root.print-cost-text; color: #7fb4f4; font-size: 20px; font-weight: 700; } }
+                    }
+                }
+                Text { text: "v0.2.2 sums the volume of visible scene objects. Walls, top/bottom layers, supports, brim and purge are still deferred to the slicer module."; wrap: word-wrap; color: #78889d; font-size: 12px; }
+                Rectangle { vertical-stretch: 1; }
+                Button { text: "Slicer / G-code (planned)"; enabled: false; }
+            }
+        }
+    }
+
+        if root.shortcuts-visible: Rectangle {
+            x: 0; y: 0; width: root.width; height: root.height; background: #00000099;
+            Rectangle {
+                width: 760px; height: parent.height < 760px ? parent.height - 36px : 720px;
+                x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                border-radius: 12px; background: root.theme-mode == 3 ? #090909 : root.theme-mode == 1 ? #ffffff : #1b222d;
+                VerticalLayout {
+                    padding: 20px; spacing: 10px;
+                    HorizontalLayout {
+                        Text { text: "Keyboard shortcuts"; font-size: 22px; font-weight: 700; color: root.theme-mode == 1 ? #162033 : #f5f7fb; }
+                        Rectangle { horizontal-stretch: 1; }
+                        Text { text: "v0.2.2"; color: #70839b; }
+                        Button { text: "Close"; clicked => { root.shortcuts-visible = false; } }
+                    }
+                    Text { text: "Shortcuts work application-wide. Arrow keys repeat while held. D toggles 2D orthographic / 3D perspective; 2D locks orbit but keeps pan and zoom."; wrap: word-wrap; color: #8090a7; font-size: 12px; }
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            padding-right: 8px; spacing: 9px;
+                            Text { text: "FILE / APP"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                            Text { text: "Ctrl+O   Open model        Ctrl+Shift+E   Export        Ctrl+P   3D Print        Ctrl+,   Settings"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Text { text: "F1   Toggle this help        Esc   Close dialogs/help"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+
+                            Text { text: "CAMERA"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                            Text { text: "Arrow keys   Orbit        Shift+Arrow keys   Pan        + / -   Zoom"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Text { text: "F or Home   Fit scene        Shift+F or Space   Fit selected        R or 0   Isometric"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+
+                            Text { text: "STANDARD VIEWS"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                            Text { text: "1 Front        2 Back        3 Right        4 Left        5 Top        6 Bottom        0 Isometric"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+
+                            Text { text: "DISPLAY"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                            Text { text: "W   Wireframe        E   Show edges        T   Textures        D   2D / 3D mode"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+
+                            Text { text: "MESH / SCENE"; color: #7d91ad; font-size: 12px; font-weight: 700; }
+                            Text { text: "PageUp / PageDown   Previous / next mesh        V   Toggle selected visibility"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+                            Text { text: "I   Isolate selected        H   Show all meshes"; color: root.theme-mode == 1 ? #26364a : #dce4ee; }
+
+                            Rectangle { height: 1px; background: root.theme-mode == 1 ? #dde3eb : #2a3442; }
+                            Text { text: "Mouse remains available: Left drag = orbit, Shift+Left/Middle drag = pan, wheel = zoom, double-click = select + fit."; wrap: word-wrap; color: #78889d; font-size: 11px; }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Global application shortcuts. Camera/display shortcuts are disabled while a modal is open.
+        KeyBinding { keys: @keys(F1); activated => { root.shortcuts-visible = !root.shortcuts-visible; root.settings-visible = false; root.print-visible = false; } }
+        KeyBinding { keys: @keys(Escape); activated => { root.shortcuts-visible = false; root.settings-visible = false; root.print-visible = false; } }
+
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Control + O); activated => { root.open-file(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Control + Shift + E); activated => { root.export-file(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Control + P); activated => { root.print-visible = true; root.recalc-print(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Control + Comma); activated => { root.settings-visible = true; } }
+
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(F); activated => { root.fit-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Home); activated => { root.fit-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Shift + F); activated => { root.fit-selected(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Space); activated => { root.fit-selected(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(R); activated => { root.iso-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(D); activated => { root.mode-2d = !root.mode-2d; root.toggle-2d(root.mode-2d); } }
+
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(LeftArrow); activated => { root.rotate-left(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(RightArrow); activated => { root.rotate-right(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(UpArrow); activated => { root.rotate-up(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(DownArrow); activated => { root.rotate-down(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Shift + LeftArrow); activated => { root.pan-view(-36, 0); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Shift + RightArrow); activated => { root.pan-view(36, 0); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Shift + UpArrow); activated => { root.pan-view(0, -36); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Shift + DownArrow); activated => { root.pan-view(0, 36); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Plus); activated => { root.zoom-in(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(HyphenMinus); activated => { root.zoom-out(); } }
+
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit1); activated => { root.front-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit2); activated => { root.back-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit3); activated => { root.right-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit4); activated => { root.left-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit5); activated => { root.top-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit6); activated => { root.bottom-view(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(Digit0); activated => { root.iso-view(); } }
+
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(W); activated => { root.wireframe = !root.wireframe; root.toggle-wireframe(root.wireframe); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(E); activated => { root.show-edges = !root.show-edges; root.toggle-show-edges(root.show-edges); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(T); activated => { root.use-textures = !root.use-textures; root.toggle-use-textures(root.use-textures); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(V); activated => { root.toggle-mesh-visible(root.selected-mesh-index); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(I); activated => { root.isolate-mesh(root.selected-mesh-index); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(H); activated => { root.show-all-meshes(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(PageUp); activated => { root.select-previous-mesh(); } }
+        KeyBinding { enabled: !root.settings-visible && !root.print-visible && !root.shortcuts-visible; keys: @keys(PageDown); activated => { root.select-next-mesh(); } }
+
+    }
+
+}
